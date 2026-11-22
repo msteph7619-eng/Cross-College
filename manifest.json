@@ -1,0 +1,16 @@
+{
+  "name": "Cross du Collège",
+  "short_name": "CrossCollège",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F7FAFA",
+  "theme_color": "#006D77",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "logo_college.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

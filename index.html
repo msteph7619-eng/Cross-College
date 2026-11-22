@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="logo_college.png" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Cross du Collège</title>
+
+  <!-- Bibliothèques PDF, QR Code et Scanner Caméra -->
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+  <script src="https://unpkg.com"></script>
+
+  <style>
+    :root {
+      --primary: #006D77;
+      --primary-light: #83C5BE;
+      --secondary: #2B7A78;
+      --bg: #F7FAFA;
+      --nav-bg: #E6F0F0;
+      --banner-bg: #D8F3DC;
+      --danger: #C1121F;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { margin: 0; background: var(--bg); color: #111; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+
+    /* Barre supérieure */
+    header {
+      background: var(--primary); color: white; padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+      padding-top: max(12px, env(safe-area-inset-top));
+    }
+    header img { width: 42px; height: 42px; object-fit: contain; background: white; border-radius: 8px; padding: 2px; }
+    header h1 { margin: 0; font-size: 19px; }
+    header small { font-size: 12px; opacity: 0.85; display: block; }
+
+    /* Contenu principal */
+    main { flex: 1; overflow-y: auto; padding: 16px; max-width: 800px; width: 100%; margin: 0 auto; }
+    .tab-content { display: none; flex-direction: column; gap: 12px; }
+    .tab-content.active { display: flex; }
+
+    /* Composants UI */
+    .card { background: white; border-radius: 12px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .row { display: flex; gap: 8px; align-items: center; }
+    input, select {
+      width: 100%; padding: 12px; border: 1px solid #CCC; border-radius: 8px; font-size: 16px; background: white;
+    }
+    button {
+      background: var(--primary); color: white; border: none; border-radius: 8px;
+      padding: 12px 16px; font-size: 15px; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); }
+    button.danger { background: var(--danger); }
+    button.outline-danger { background: transparent; border: 1.5px solid var(--danger); color: var(--danger); }
+
+    .banner {
+      background: var(--banner-bg); color: #081C15; padding: 12px;
+      border-radius: 8px; font-weight: bold; font-size: 15px;
+    }
+    .list-item {
+      background: white; padding: 12px; border-radius: 8px; margin-bottom: 6px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .badge { font-weight: 800; color: var(--primary); font-size: 18px; min-width: 55px; }
+
+    /* Caméra */
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; min-height: 260px; }
+
+    /* Navigation basse */
+    nav {
+      background: var(--nav-bg); display: flex; border-top: 1px solid #CFD8DC;
+      padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0;
+    }
+    nav button {
+      flex: 1; background: transparent; color: #455A64; flex-direction: column;
+      padding: 10px 4px; font-size: 12px; border-radius: 0; gap: 3px;
+    }
+    nav button.active { color: var(--primary); font-weight: 800; border-top: 3px solid var(--primary); }
+    nav span.ico { font-size: 20px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img id="appLogo" src="logo_college.png" alt="Logo" />
+    <div>
+      <h1>Cross du Collège</h1>
+      <small>S.Maerten 2026</small>
+    </div>
+  </header>
+
+  <main>
+    <!-- ONGLET 1 : DOSSARDS -->
+    <section id="tab-0" class="tab-content active">
+      <label style="font-size:13px; color:#555; font-weight:600;">Inscription en haut des dossards :</label>
+      <input type="text" id="titreDossard" value="CROSS DU COLLÈGE" />
+
+      <div class="row">
+        <input type="file" id="csvInput" accept=".csv,text/csv" style="display:none" />
+        <button style="flex:1" onclick="document.getElementById('csvInput').click()">📂 Importer CSV</button>
+        <button id="btnPdfDossards" style="flex:1" onclick="genererPdfDossards()" disabled>🖨️ PDF Dossards</button>
+      </div>
+
+      <strong id="countEleves">Participants enregistrés : 0</strong>
+      <div id="listeEleves"></div>
+    </section>
+
+    <!-- ONGLET 2 : ARRIVÉE / SCAN -->
+    <section id="tab-1" class="tab-content">
+      <!-- Étape 1 : Choix de la course -->
+      <div id="prepScan" class="card" style="text-align:center; padding:24px 16px;">
+        <img src="logo_college.png" style="width:90px; height:90px; object-fit:contain; margin-bottom:10px;" />
+        <h2 style="margin:6px 0;">Préparation de l'arrivée</h2>
+        <p style="color:#666; font-size:14px;">Choisissez une course existante ou créez-en une nouvelle.</p>
+
+        <div class="row" style="margin:16px 0;">
+          <select id="selectCourseScan"></select>
+          <button onclick="creerNouvelleCourse()">➕</button>
+        </div>
+
+        <button id="btnStartScan" style="width:100%; padding:15px; font-size:16px;" onclick="demarrerScan()">
+          📷 DÉMARRER LE SCAN
+        </button>
+      </div>
+
+      <!-- Étape 2 : Saisie manuelle au-dessus + Caméra en dessous -->
+      <div id="activeScan" style="display:none; flex-direction:column; gap:10px;">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <small style="color:#666; font-weight:bold;">COURSE EN COURS</small>
+            <div id="labelCourseActive" style="font-size:20px; font-weight:800; color:var(--primary);"></div>
+          </div>
+          <button class="outline" onclick="arreterScan()">⇄ Changer</button>
+        </div>
+
+        <!-- Saisie manuelle AU-DESSUS de la caméra -->
+        <div class="row">
+          <input type="number" id="inputDossardManuel" placeholder="Saisie manuelle d'un dossard" />
+          <button onclick="validerManuel()">Valider</button>
+        </div>
+
+        <div id="scanBanner" class="banner">En attente du 1er arrivant...</div>
+
+        <!-- Caméra -->
+        <div id="reader"></div>
+      </div>
+    </section>
+
+    <!-- ONGLET 3 : RÉSULTATS PAR COURSE -->
+    <section id="tab-2" class="tab-content">
+      <select id="selectCourseRes" onchange="afficherResultatsCourse()"></select>
+      <div class="row">
+        <button id="btnPdfCourse" style="flex:1" onclick="genererPdfCourse()">📄 Imprimer PDF</button>
+        <button class="outline-danger" onclick="effacerResultatsCourse()">🗑️</button>
+      </div>
+      <strong id="countArrives">Arrivés : 0 élèves</strong>
+      <div id="listeResultatsCourse"></div>
+    </section>
+
+    <!-- ONGLET 4 : BILAN GLOBAL PAR CLASSE -->
+    <section id="tab-3" class="tab-content">
+      <h2 style="margin:0; font-size:19px;">Bilan global par classe</h2>
+      <small style="color:#666;">Moyenne des rangs calculée sur toutes les courses enregistrées (tri alphabétique)</small>
+      <button id="btnPdfClasses" onclick="genererPdfClasses()">📄 Imprimer le bilan par classe (PDF)</button>
+      <div id="listeClasses"></div>
+    </section>
+
+    <!-- ONGLET 5 : GESTION / ADMINISTRATION -->
+    <section id="tab-4" class="tab-content">
+      <h2 style="margin:0; font-size:19px;">Administration des données</h2>
+
+      <div class="card">
+        <strong>Supprimer une course spécifique</strong>
+        <div class="row" style="margin-top:8px;">
+          <select id="selectCourseDel"></select>
+        </div>
+        <button class="outline-danger" style="width:100%; margin-top:8px;" onclick="supprimerUneCourse()">
+          Supprimer cette course et ses résultats
+        </button>
+      </div>
+
+      <div class="card">
+        <strong>Remise à zéro des arrivées</strong>
+        <p style="font-size:13px; color:#666;">Efface tous les classements mais conserve les élèves et les courses.</p>
+        <button class="outline-danger" style="width:100%;" onclick="viderArrivees()">Effacer tous les résultats</button>
+      </div>
+
+      <div class="card">
+        <strong>Liste des coureurs</strong>
+        <p style="font-size:13px; color:#666;">Supprime uniquement la base des élèves inscrits.</p>
+        <button class="outline-danger" style="width:100%;" onclick="viderEleves()">Supprimer tous les coureurs</button>
+      </div>
+
+      <div class="card" style="background:#FFEBEE;">
+        <strong style="color:var(--danger);">Réinitialisation complète</strong>
+        <p style="font-size:13px; color:#7F0000;">Supprime définitivement élèves, courses et résultats.</p>
+        <button class="danger" style="width:100%;" onclick="toutEffacer()">⚠️ TOUT EFFACER</button>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button class="active" onclick="changerOnglet(0, this)"><span class="ico">👥</span>Dossards</button>
+    <button onclick="changerOnglet(1, this)"><span class="ico">📷</span>Arrivée</button>
+    <button onclick="changerOnglet(2, this)"><span class="ico">🏆</span>Courses</button>
+    <button onclick="changerOnglet(3, this)"><span class="ico">🏫</span>Classes</button>
+    <button onclick="changerOnglet(4, this)"><span class="ico">⚙️</span>Gestion</button>
+  </nav>
+
+  <!-- Zone cachée pour fabriquer les QR codes -->
+  <div id="qrHidden" style="display:none;"></div>
+
+  <script src="app.js"></script>
+  <script>
+if ('serviceWorker' in navigator) {
+navigator.serviceWorker.register('./sw.js');
+}
+</script>
+</body>
+</html>
