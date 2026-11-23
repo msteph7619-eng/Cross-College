@@ -152,7 +152,7 @@ function demarrerScan() {
       }
     }
   ).catch(err => {
-    alert("Erreur caméra : vérifiez l'autorisation dans les réglages Safari.");
+    alert("Erreur caméra : vérifiez l'autorisation dans les réglages.");
   });
 }
 
