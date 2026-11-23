@@ -103,6 +103,8 @@
       <input type="text" id="titreDossard" value="CROSS DU COLLÈGE" />
 
       <div class="row">
+      	<input type="file" id="logoInput" accept="image/*" style="display:none" />
+      	<button class="outline" onclick="document.getElementById('logoInput').click()">🖼️ Changer le logo du filigrane</button>
         <input type="file" id="csvInput" accept=".csv,text/csv" style="display:none" />
         <button style="flex:1" onclick="document.getElementById('csvInput').click()">📂 Importer CSV</button>
         <button id="btnPdfDossards" style="flex:1" onclick="genererPdfDossards()" disabled>🖨️ PDF Dossards</button>

@@ -6,6 +6,25 @@ let arrivees = JSON.parse(localStorage.getItem('cross_arrivees') || '[]');
 const titreInput = document.getElementById('titreDossard');
 titreInput.value = localStorage.getItem('cross_titre') || 'CROSS DU COLLÈGE';
 titreInput.addEventListener('input', () => localStorage.setItem('cross_titre', titreInput.value));
+// Chargement et sauvegarde du logo en Base64 (fonctionne même en local file://)
+let logoBase64 = localStorage.getItem('cross_logo') || null;
+if (logoBase64) {
+  document.getElementById('appLogo').src = logoBase64;
+}
+
+document.getElementById('logoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    logoBase64 = evt.target.result;
+    localStorage.setItem('cross_logo', logoBase64);
+    document.getElementById('appLogo').src = logoBase64;
+    alert("Logo enregistré ! Il apparaîtra désormais en filigrane sur les dossards.");
+  };
+  reader.readAsDataURL(file);
+});
+
 
 function sauvegarder() {
   localStorage.setItem('cross_eleves', JSON.stringify(eleves));
@@ -289,6 +308,11 @@ function creerQrDataUrl(texte) {
 
 function getLogoFiligraneDataUrl() {
   try {
+    // 1. Utilise le logo importé en Base64 s'il existe (100 % compatible file://)
+    if (logoBase64) {
+      return logoBase64;
+    }
+    // 2. Sinon tente la lecture classique (fonctionne sur GitHub Pages / Netlify)
     const img = document.getElementById('appLogo');
     if (!img || !img.complete || img.naturalWidth === 0) return null;
     const canvas = document.createElement('canvas');
@@ -298,9 +322,10 @@ function getLogoFiligraneDataUrl() {
     ctx.drawImage(img, 0, 0, 200, 200);
     return canvas.toDataURL('image/png');
   } catch (e) {
-    return null; // Évite de bloquer le PDF si le logo n'est pas encore prêt
+    return null;
   }
 }
+
 
 // Fonction universelle d'ouverture/téléchargement compatible Safari iPad & Android
 function telechargerOuOuvrirPdf(doc, nomFichier) {
@@ -342,10 +367,14 @@ function genererPdfDossards() {
       const top = marge + row * (haut + marge);
       const centerX = left + larg / 2;
 
-      // 1. Filigrane uniquement sous le titre et le numéro (si logo chargé)
+      // 1. Filigrane transparent (16 %) sous le titre et le numéro
       if (logoFiligrane) {
-        doc.addImage(logoFiligrane, 'PNG', centerX - 52, top + 8, 104, 104);
+      	doc.saveGraphicsState();
+      	doc.setGState(new doc.GState({ opacity: 0.16 }));
+      	doc.addImage(logoFiligrane, 'PNG', centerX - 52, top + 8, 104, 104);
+      	doc.restoreGraphicsState();
       }
+
 
       // 2. Cadre
       doc.setLineWidth(1.5);

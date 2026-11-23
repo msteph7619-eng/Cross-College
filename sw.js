@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cross-college-v4';
+const CACHE_NAME = 'cross-college-v5';
 const ASSETS = [
   './',
   './index.html',
