@@ -137,44 +137,76 @@ function demarrerScan() {
   document.getElementById('labelCourseActive').textContent = courseActive;
   document.getElementById('scanBanner').textContent = "En attente du 1er arrivant...";
 
-  html5QrCode = new Html5Qrcode("reader");
-  scannerActif = true;
-  html5QrCode.start(
-    { facingMode: "environment" },
-    { fps: 15, qrbox: { width: 220, height: 220 } },
-    (decodedText) => {
-      const num = parseInt(decodedText);
-      const maintenant = Date.now();
-      if (!isNaN(num) && (num !== dernierDossardVu || maintenant - dernierTimestamp > 3000)) {
-        dernierDossardVu = num;
-        dernierTimestamp = maintenant;
-        traiterDossard(num);
-      }
-    }
-  ).catch(err => {
-    alert("Erreur caméra : vérifiez l'autorisation dans les réglages.");
-  });
+  const readerDiv = document.getElementById('reader');
+  readerDiv.innerHTML = '<div style="color:white; padding:30px; text-align:center;">Initialisation de la caméra...</div>';
+
+  // Vérification de la disponibilité de l'API caméra et de la bibliothèque
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof Html5Qrcode === 'undefined') {
+    afficherModeSecoursCamera("Caméra indisponible sur cet appareil ou navigateur. Utilisez la saisie manuelle ci-dessus.");
+    return;
+  }
+
+  try {
+    html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 15, qrbox: { width: 220, height: 220 } },
+      (decodedText) => {
+        const num = parseInt(decodedText);
+        const maintenant = Date.now();
+        if (!isNaN(num) && (num !== dernierDossardVu || maintenant - dernierTimestamp > 3000)) {
+          dernierDossardVu = num;
+          dernierTimestamp = maintenant;
+          traiterDossard(num);
+        }
+      },
+      () => {} // Ignore silencieusement les images sans QR code
+    ).then(() => {
+      scannerActif = true;
+    }).catch((err) => {
+      scannerActif = false;
+      html5QrCode = null;
+      afficherModeSecoursCamera("Accès caméra refusé ou absent. La saisie manuelle ci-dessus reste 100 % fonctionnelle.");
+    });
+  } catch (e) {
+    scannerActif = false;
+    html5QrCode = null;
+    afficherModeSecoursCamera("Impossible de démarrer la caméra. Utilisez la saisie manuelle ci-dessus.");
+  }
+}
+
+function afficherModeSecoursCamera(message) {
+  const readerDiv = document.getElementById('reader');
+  readerDiv.innerHTML = `
+    <div style="color:#E0E0E0; padding:24px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:12px;">
+      <span style="font-size:32px;">📷🚫</span>
+      <div style="font-size:14px; line-height:1.4;">${message}</div>
+      <button class="outline" style="color:white; border-color:white;" onclick="demarrerScan()">🔄 Réessayer la caméra</button>
+    </div>
+  `;
 }
 
 function arreterScan() {
+  const fermerVue = () => {
+    scannerActif = false;
+    html5QrCode = null;
+    document.getElementById('reader').innerHTML = '';
+    document.getElementById('activeScan').style.display = 'none';
+    document.getElementById('prepScan').style.display = 'block';
+  };
+
   if (html5QrCode && scannerActif) {
-    html5QrCode.stop().then(() => {
-      html5QrCode.clear();
-      scannerActif = false;
-    }).catch(() => {});
+    html5QrCode.stop()
+      .then(() => {
+        try { html5QrCode.clear(); } catch (e) {}
+        fermerVue();
+      })
+      .catch(() => fermerVue());
+  } else {
+    fermerVue();
   }
-  document.getElementById('activeScan').style.display = 'none';
-  document.getElementById('prepScan').style.display = 'block';
 }
 
-function validerManuel() {
-  const input = document.getElementById('inputDossardManuel');
-  const num = parseInt(input.value);
-  if (!isNaN(num)) {
-    traiterDossard(num);
-    input.value = '';
-  }
-}
 
 function traiterDossard(numero) {
   const banner = document.getElementById('scanBanner');
